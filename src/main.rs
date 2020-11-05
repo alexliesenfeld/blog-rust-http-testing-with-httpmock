@@ -1,17 +1,7 @@
-use custom_error::custom_error;
 use isahc::prelude::Request;
 use isahc::{RequestExt, ResponseExt};
 use serde_json::{json, Value};
-
-use crate::GithubError::{MissingValueError, UnexpectedResponseCodeError};
-
-custom_error! {pub GithubError
-    HttpError{source: isahc::http::Error} = "HTTP error",
-    HttpClientError{source: isahc::Error} = "HTTP client error",
-    ParserError{source: serde_json::Error} = "JSON parser error",
-    UnexpectedResponseCodeError{code: u16} = "Unexpected HTTP response code: {code}",
-    MissingValueError{field: &'static str} = "Missing field in HTTP response: {field}",
-}
+use anyhow::{Result,ensure};
 
 pub struct GithubClient {
     base_url: String,
@@ -23,24 +13,18 @@ impl GithubClient {
         GithubClient { base_url: base_url.into(), token: token.into() }
     }
 
-    pub fn create_repo(&self, name: &str) -> Result<String, GithubError> {
+    pub fn create_repo(&self, name: &str) -> Result<String> {
         let mut response = Request::post(format!("{}/user/repos", self.base_url))
             .header("Authorization", format!("token {}", self.token))
             .header("Content-Type", "application/json")
             .body(json!({ "name": name, "private": true }).to_string())?
             .send()?;
-
-        if response.status() != 201 {
-            return Err(UnexpectedResponseCodeError {
-                code: response.status().as_u16(),
-            });
-        }
+        ensure!(response.status().as_u16() == 201, "Unexpected status code");
 
         let json_body: Value = response.json()?;
-        return match json_body["html_url"].as_str() {
-            Some(url) => Ok(url.into()),
-            None => Err(MissingValueError { field: "html_url" }),
-        };
+        ensure!(json_body["html_url"].get().is_some(), "Missing html_url in response");
+
+        return Ok(json_body["html_url"].as_str().unwrap().into());
     }
 }
 

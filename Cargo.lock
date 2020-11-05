@@ -10,10 +10,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf8dcb5b4bbaa28653b647d8c77bd4ed40183b48882e130c1f1ffb73de069fd7"
+
+[[package]]
 name = "api_mocking"
 version = "0.1.0"
 dependencies = [
- "custom_error",
+ "anyhow",
  "env_logger",
  "httpmock",
  "isahc",
@@ -364,12 +370,6 @@ dependencies = [
  "vcpkg",
  "winapi 0.3.9",
 ]
-
-[[package]]
-name = "custom_error"
-version = "1.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93a0fc65739ae998afc8d68e64bdac2efd1bc4ffa1a0703d171ef2defae3792f"
 
 [[package]]
 name = "diff"
