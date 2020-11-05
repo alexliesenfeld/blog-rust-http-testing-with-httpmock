@@ -1,16 +1,18 @@
-use isahc::prelude::Request;
-use isahc::{RequestExt, ResponseExt};
+use anyhow::{ensure, Result};
+use isahc::{prelude::Request, RequestExt, ResponseExt};
 use serde_json::{json, Value};
-use anyhow::{Result,ensure};
 
 pub struct GithubClient {
-    base_url: &'static str,
-    token: &'static str,
+    base_url: String,
+    token: String,
 }
 
 impl GithubClient {
-    pub fn new(token: &'static str, base_url: &'static str) -> GithubClient {
-        GithubClient { base_url, token }
+    pub fn new(token: &str, base_url: &str) -> GithubClient {
+        GithubClient {
+            base_url: base_url.into(),
+            token: token.into(),
+        }
     }
 
     pub fn create_repo(&self, name: &str) -> Result<String> {
@@ -23,7 +25,10 @@ impl GithubClient {
         let json_body: Value = response.json()?;
 
         ensure!(response.status().as_u16() == 201, "Unexpected status code");
-        ensure!(json_body["html_url"].is_string(), "Missing html_url in response");
+        ensure!(
+            json_body["html_url"].is_string(),
+            "Missing html_url in response"
+        );
 
         return Ok(json_body["html_url"].as_str().unwrap().into());
     }
@@ -37,19 +42,15 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::GithubClient;
     use httpmock::MockServer;
     use serde_json::json;
 
-    use crate::GithubClient;
-
     #[test]
     fn create_repo_success_test() {
-        let _ = env_logger::try_init();
-
         // Arrange
-        let mock_server = MockServer::start();
-
-        let mock = mock_server.mock(|when, then| {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
             when.method("POST")
                 .path("/user/repos")
                 .header("Authorization", "token TOKEN")
@@ -57,11 +58,10 @@ mod tests {
             then.status(201)
                 .json_body(json!({ "html_url": "http://example.com" }));
         });
-
-        let github_client = GithubClient::new("TOKEN".into(), &mock_server.base_url());
+        let client = GithubClient::new("TOKEN", &server.base_url());
 
         // Act
-        let result = github_client.create_repo("myRepo");
+        let result = client.create_repo("myRepo");
 
         // Assert
         mock.assert();
