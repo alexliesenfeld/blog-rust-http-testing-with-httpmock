@@ -4,13 +4,13 @@ use serde_json::{json, Value};
 use anyhow::{Result,ensure};
 
 pub struct GithubClient {
-    base_url: String,
-    token: String,
+    base_url: &'static str,
+    token: &'static str,
 }
 
 impl GithubClient {
-    pub fn new(token: &str, base_url: &str) -> GithubClient {
-        GithubClient { base_url: base_url.into(), token: token.into() }
+    pub fn new(token: &'static str, base_url: &'static str) -> GithubClient {
+        GithubClient { base_url, token }
     }
 
     pub fn create_repo(&self, name: &str) -> Result<String> {
@@ -19,10 +19,11 @@ impl GithubClient {
             .header("Content-Type", "application/json")
             .body(json!({ "name": name, "private": true }).to_string())?
             .send()?;
-        ensure!(response.status().as_u16() == 201, "Unexpected status code");
 
         let json_body: Value = response.json()?;
-        ensure!(json_body["html_url"].get().is_some(), "Missing html_url in response");
+
+        ensure!(response.status().as_u16() == 201, "Unexpected status code");
+        ensure!(json_body["html_url"].is_string(), "Missing html_url in response");
 
         return Ok(json_body["html_url"].as_str().unwrap().into());
     }
